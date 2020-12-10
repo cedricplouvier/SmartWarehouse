@@ -1,1 +1,1 @@
-UPDATE: Change color of object in map according to it's classification
+UPDATE: Change color of object in map according to it's classification + use output from ROS to calculate camera placement. 

@@ -1,14 +1,19 @@
 # This is a sample Python script.
 
 from PIL import Image
+import math
 
 # Press Shift+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 
-# Open bitmap and convert to RGB image with 255 color values
+# open json file and read data from it
+
+# open bitmap and convert to RGB image with 255 color values
 data = Image.open('warehouseSquare.bmp').convert('RGB', colors=256)
 pixels = data.load()
 object_points = []
+
+# read in JSON-file
 
 # camera & LiDAR data from Object/People Tracking
 classification = 'Static'
@@ -18,17 +23,35 @@ object_image_width = 185
 object_image_height = 1
 
 map_resolution = (544, 544)
-camera_position = (335, 220)
-camera_angle = 32
+warehouse_resolution = (20, 10)
+camera_origin = (0, 0)
+resolution = 0.05
+camera_start_position = (272, 272)
+camera_position = (272, 272)
+camera_relative_position = (0, 0)
+camera_angle = 30
 camera_resolution = (740, 480)
-
 # assumes that if camera is orientated to right of map, the rotation is 0 degrees
-camera_rotation = 225
+camera_rotation = 0
+camera_orientation = (0, 0, 0, 0)
 
 
 def trace_objects():
+    global data, camera_rotation, camera_position, camera_start_position
+
     start_right, stop_right, start_up, stop_up, start_left, stop_left, start_down, stop_down = False, False, False, False, False, False, False, False
     limit_x, limit_y = 0, 0
+
+    # calculate camera start position
+    camera_start_position = (map_resolution[0] + (camera_origin[0]/resolution), map_resolution[1]
+                             + (camera_origin[0]/resolution))
+
+    # calculate position of camera in map
+    camera_position = (camera_start_position[0] + (camera_relative_position[0] / 0.05),
+                       camera_start_position[0] + (camera_relative_position[1] / 0.05))
+
+    # calculate orientation of camera in map (convert from quaternion to euler angle)
+    camera_rotation = quaternion_to_euler(camera_orientation)
 
     # determine camera viewpoint
     camera_viewpoint_x, camera_viewpoint_y = calculate_viewpoints(camera_rotation, map_resolution, camera_position)
@@ -61,8 +84,8 @@ def trace_objects():
     print("start: ", start)
     print("stop: ", stop)
 
-    start = start - start_correction
-    stop = stop + stop_correction
+    # start = start - start_correction
+    # stop = stop + stop_correction
 
     print("start: ", start)
     print("stop: ", stop)
@@ -120,7 +143,7 @@ def trace_objects():
     visualize_ray(points_1, (255, 0, 0))
     visualize_ray(points_2, (255, 0, 0))
 
-    data.show()
+    data.save("Map_Layer_2.png")
 
 
 def shoot_rays(start_right, stop_right, start_up, stop_up, start_left, stop_left, start_down, stop_down,
@@ -773,6 +796,18 @@ def get_ray(start, end):
     if swapped:
         points.reverse()
     return points
+
+
+def quaternion_to_euler(quaternion):
+    t1 = +2.0 * (quaternion[3] * quaternion[2] + quaternion[0] * quaternion[1])
+    t2 = +1.0 - 2.0 * (quaternion[1] * quaternion[1] + quaternion[2] * quaternion[2])
+
+    z = math.degrees(math.atan2(t1, t2))
+
+    if z < 0:
+        z = 360 + z
+
+    return z
 
 
 # Press the green button in the gutter to run the script.

@@ -1,1 +1,0 @@
-UPDATE: Change color of object in map according to it's classification

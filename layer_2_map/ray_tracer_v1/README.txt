@@ -1,0 +1,1 @@
+Ray tracer that uses camera position, rotation and camera angle to shoot rays. 

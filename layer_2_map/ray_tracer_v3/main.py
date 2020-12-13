@@ -2,6 +2,7 @@
 
 from PIL import Image
 import math
+import json
 
 # Press Shift+F10 to execute it or replace it with your code.
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
@@ -43,8 +44,8 @@ def trace_objects():
     limit_x, limit_y = 0, 0
 
     # calculate camera start position
-    camera_start_position = (map_resolution[0] + (camera_origin[0]/resolution), map_resolution[1]
-                             + (camera_origin[0]/resolution))
+    camera_start_position = (map_resolution[0] + (camera_origin[0] / resolution), map_resolution[1]
+                             + (camera_origin[0] / resolution))
 
     # calculate position of camera in map
     camera_position = (camera_start_position[0] + (camera_relative_position[0] / 0.05),
@@ -810,8 +811,46 @@ def quaternion_to_euler(quaternion):
     return z
 
 
+def get_robot_position(json_file):
+    global camera_orientation, camera_relative_position
+
+    orientation = []
+    pos = []
+
+    f = open(json_file, )
+    json_data = json.load(f)
+
+    for i in json_data:
+        orientation[0] = i["orientation"][0]
+        orientation[1] = i["orientation"][1]
+        orientation[2] = i["orientation"][2]
+        orientation[3] = i["orientation"][3]
+
+        pos[0] = i["pos"][1]
+        pos[1] = i["pos"][0]
+
+    camera_orientation = tuple(orientation)
+    camera_relative_position = tuple(pos)
+
+
+def get_camera_data(json_file):
+    global classification, object_image_x, object_image_y, object_image_width, object_image_height
+
+    f = open(json_file, )
+    json_data = json.load(f)
+
+    for i in data['object_people_tracking_data']:
+        classification = i["classification"]
+        object_image_x = i["object_image_x"]
+        object_image_y = i["object_image_y"]
+        object_image_width = i["object_image_width"]
+        object_image_height = i["object_image_height"]
+
+
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
+    get_robot_position('position_data.json')
+    get_camera_data('object_people_tracking.json')
     trace_objects()
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/

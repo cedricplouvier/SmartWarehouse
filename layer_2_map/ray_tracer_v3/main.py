@@ -3,18 +3,18 @@
 from PIL import Image
 import math
 import json
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
-# open json file and read data from it
+import os
+import time
 
 # open bitmap and convert to RGB image with 255 color values
-data = Image.open('warehouseSquare.bmp').convert('RGB', colors=256)
-pixels = data.load()
-object_points = []
+while not os.path.exists("receivedBMP.bmp"):
+    print("waiting for map layer 1")
+    time.sleep(1)
 
-# read in JSON-file
+if os.path.isfile("receivedBMP.bmp"):
+    data = Image.open('receivedBMP.bmp').convert('RGB', colors=256)
+    pixels = data.load()
+    object_points = []
 
 # camera & LiDAR data from Object/People Tracking
 classification = 'Static'
@@ -25,12 +25,12 @@ object_image_height = 1
 
 map_resolution = (544, 544)
 warehouse_resolution = (20, 10)
-camera_origin = (0, 0)
+camera_origin = (-12.2, -13.8)
 resolution = 0.05
 camera_start_position = (272, 272)
 camera_position = (272, 272)
 camera_relative_position = (0, 0)
-camera_angle = 30
+camera_angle = 90
 camera_resolution = (740, 480)
 # assumes that if camera is orientated to right of map, the rotation is 0 degrees
 camera_rotation = 0
@@ -54,6 +54,8 @@ def trace_objects():
     # calculate orientation of camera in map (convert from quaternion to euler angle)
     camera_rotation = quaternion_to_euler(camera_orientation)
 
+    print("rotation: ", camera_rotation)
+
     # determine camera viewpoint
     camera_viewpoint_x, camera_viewpoint_y = calculate_viewpoints(camera_rotation, map_resolution, camera_position)
 
@@ -73,20 +75,17 @@ def trace_objects():
     start_correction, stop_correction = refine_camera_angle(object_image_x, object_image_y, object_image_width,
                                                             object_image_height)
 
-    print(start_correction)
-    print(stop_correction)
+    print("correction start: ", start_correction)
+    print("correction stop: ", stop_correction)
+
+    start = start - start_correction
+    stop = stop + stop_correction
 
     if start > 360:
         start = start - 360
 
     if stop < 0:
         stop = 360 + stop
-
-    print("start: ", start)
-    print("stop: ", stop)
-
-    # start = start - start_correction
-    # stop = stop + stop_correction
 
     print("start: ", start)
     print("stop: ", stop)
@@ -123,11 +122,14 @@ def trace_objects():
     shoot_rays(start_right, stop_right, start_up, stop_up, start_left, stop_left, start_down, stop_down,
                ray_endpoint_start_x, ray_endpoint_start_y, ray_endpoint_stop_x, ray_endpoint_stop_y)
 
+    print(object_points)
+    print(classification)
+
     # change color of object pixels that were hit
     classify_object(object_points, classification)
 
     # look if there are other pixels that belong to the object
-    for i in range(0, 100):
+    for i in range(0, 30):
         expand_classification(object_points, classification)
 
     # visualise camera viewpoint
@@ -614,7 +616,7 @@ def shoot_rays(start_right, stop_right, start_up, stop_up, start_left, stop_left
 
     elif start_down and stop_down:
         print("start: down & stop: down")
-        for x in range(round(ray_endpoint_start_x), round(ray_endpoint_stop_x)):
+        for x in range(round(ray_endpoint_stop_x), round(ray_endpoint_start_x)):
             # calculate ray using Bresenham's line algorithm
             points = get_ray((camera_position[0], camera_position[1]), (x, map_resolution[1] - 1))
             for coordinate in points:
@@ -655,22 +657,22 @@ def expand_classification(coordinates, object_type):
     for coordinate in coordinates:
         if (coordinate[0] + 1) < map_resolution[0]:
             if (pixels[(coordinate[0] + 1), coordinate[1]]) == (255, 255, 255):
-                print("expand up")
+                # print("expand up")
                 pixels[(coordinate[0] + 1), coordinate[1]] = color
                 temp.append(((coordinate[0] + 1), coordinate[1]))
         if (coordinate[0] - 1) >= 0:
             if (pixels[(coordinate[0] - 1), coordinate[1]]) == (255, 255, 255):
-                print("expand down")
+                # print("expand down")
                 pixels[(coordinate[0] - 1), coordinate[1]] = color
                 temp.append(((coordinate[0] - 1), coordinate[1]))
         if (coordinate[1] + 1) < map_resolution[1]:
             if (pixels[coordinate[0], (coordinate[1] + 1)]) == (255, 255, 255):
-                print("expand right")
+                # print("expand right")
                 pixels[coordinate[0], (coordinate[1] + 1)] = color
                 temp.append((coordinate[0], (coordinate[1] + 1)))
         if (coordinate[1] - 1) >= 0:
             if (pixels[coordinate[0], (coordinate[1] - 1)]) == (255, 255, 255):
-                print("expand left")
+                # print("expand left")
                 pixels[coordinate[0], (coordinate[1] - 1)] = color
                 temp.append((coordinate[0], (coordinate[1] - 1)))
 
@@ -680,9 +682,8 @@ def expand_classification(coordinates, object_type):
 
 def refine_camera_angle(object_x, object_y, object_width, object_height):
     # correction, used to make angle not too narrow
-    epsilon = 10
-    start_correction = ((camera_angle / camera_resolution[0]) * object_x) - 10
-    stop_correction = ((camera_angle / camera_resolution[0]) * (camera_resolution[0] - (object_x + object_width))) + 10
+    start_correction = ((camera_angle / camera_resolution[0]) * object_x)
+    stop_correction = ((camera_angle / camera_resolution[0]) * (camera_resolution[0] - (object_x + object_width)))
 
     return start_correction, stop_correction
 
@@ -785,6 +786,8 @@ def get_ray(start, end):
     # iterate over bounding box generating points between start and end
     y = y1
     points = []
+    x1 = round(x1)
+    x2 = round(x2)
     for x in range(x1, x2 + 1):
         coord = (y, x) if is_steep else (x, y)
         points.append(coord)
@@ -817,17 +820,23 @@ def get_robot_position(json_file):
     orientation = []
     pos = []
 
-    f = open(json_file, )
-    json_data = json.load(f)
+    while not os.path.exists(json_file):
+        print("waiting for robot position")
+        time.sleep(1)
 
-    for i in json_data:
-        orientation[0] = i["orientation"][0]
-        orientation[1] = i["orientation"][1]
-        orientation[2] = i["orientation"][2]
-        orientation[3] = i["orientation"][3]
+    if os.path.isfile(json_file):
+        f = open(json_file, )
+        json_data = json.load(f)
 
-        pos[0] = i["pos"][1]
-        pos[1] = i["pos"][0]
+    for i in json_data['orientation']:
+        orientation.insert(0, i["x"])
+        orientation.insert(1, i["y"])
+        orientation.insert(2, i["z"])
+        orientation.insert(3, i["w"])
+
+    for i in json_data['pos']:
+        pos.insert(0, i["x"])
+        pos.insert(1, i["y"])
 
     camera_orientation = tuple(orientation)
     camera_relative_position = tuple(pos)
@@ -836,10 +845,15 @@ def get_robot_position(json_file):
 def get_camera_data(json_file):
     global classification, object_image_x, object_image_y, object_image_width, object_image_height
 
-    f = open(json_file, )
-    json_data = json.load(f)
+    while not os.path.exists(json_file):
+        print("waiting for camera data")
+        time.sleep(1)
 
-    for i in data['object_people_tracking_data']:
+    if os.path.isfile(json_file):
+        f = open(json_file, )
+        json_data = json.load(f)
+
+    for i in json_data['object_people_tracking_data']:
         classification = i["classification"]
         object_image_x = i["object_image_x"]
         object_image_y = i["object_image_y"]
@@ -849,8 +863,8 @@ def get_camera_data(json_file):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    get_robot_position('position_data.json')
-    get_camera_data('object_people_tracking.json')
+    get_robot_position('position_data.JSON')
+    get_camera_data('object_people_tracking.JSON')
     trace_objects()
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/

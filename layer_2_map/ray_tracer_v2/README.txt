@@ -1,1 +1,0 @@
-UPDATE: Use image data to refine search space

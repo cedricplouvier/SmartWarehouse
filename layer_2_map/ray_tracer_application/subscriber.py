@@ -67,6 +67,7 @@ def main(channel):
     dust.connect()
     # add a message listener on the subscribe-tcp channel. The callback function takes a bytes-like object as
     # argument containing the payload of the message
+    # TODO: check channels
     if channel == "subscribe-mqtt-map":
         dust.register_listener("subscribe-mqtt-map", receive_map)
     elif channel == "subscribe-mqtt-positional-data":

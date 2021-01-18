@@ -20,7 +20,7 @@ def convertPngToBytes():
 
 def main():
     while True:
-        # time.sleep(180)
+        time.sleep(2)
         L2 = convertPngToBytes()
         # initialises the core with the given block name and the directory where the modules are located (default "./modules")
         dust = core.Core("publish-block", "./modules")

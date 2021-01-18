@@ -1,7 +1,7 @@
-import ActionMessage_pb2 as ActionMessage
-import StatusMessage_pb2 as Status
-import DataStreamMessage_pb2 as DataStream
-import DecodingProto
+import python_proto.ActionMessage_pb2 as ActionMessage
+import python_proto.StatusMessage_pb2 as Status
+import python_proto.DataStreamMessage_pb2 as DataStream
+import python_proto.DecodingProto as DecodingProto
 from google.protobuf import any_pb2
 from google.protobuf import timestamp_pb2
 

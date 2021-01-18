@@ -10,7 +10,7 @@ if __name__ == '__main__':
     proc1 = Process(target=subscriber.main, args=("subscribe-mqtt-map",))
     proc2 = Process(target=subscriber.main, args=("subscribe-mqtt-positional-data",))
     proc3 = Process(target=subscriber.main, args=("subscribe-mqtt-camera-data",))
-    proc4= Process(target=data_processing.main)
+    proc4 = Process(target=data_processing.main)
     proc5 = Process(target=raytracer.main)
     proc6 = Process(target=publisher.main)
 

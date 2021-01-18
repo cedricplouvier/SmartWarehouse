@@ -13,7 +13,8 @@ camera_angle = 90
 camera_resolution = (740, 480)
 
 
-def trace_objects(data, pixels, classification, object_image_x, object_image_width, camera_relative_position,
+def trace_objects(data, pixels, classification, object_image_x, object_image_z, object_image_width,
+                  camera_relative_position,
                   camera_orientation, map_rotation):
     start_right, stop_right, start_up, stop_up, start_left, stop_left, start_down, stop_down = False, False, False, \
                                                                                                False, False, False, \
@@ -38,6 +39,7 @@ def trace_objects(data, pixels, classification, object_image_x, object_image_wid
     y_transformed = (camera_relative_position[0] / resolution) * np.sin(np.deg2rad(map_rotation)) + \
                     (camera_relative_position[1] / resolution) * np.cos(np.deg2rad(map_rotation))
 
+    # camera is placed downwards wrt rotation of map
     if camera_relative_position[0] < 0 or camera_relative_position[1] < 0:
         map_rotation = -map_rotation
 
@@ -53,103 +55,146 @@ def trace_objects(data, pixels, classification, object_image_x, object_image_wid
 
     print("rotation: ", camera_rotation)
 
-    # determine camera viewpoint
-    camera_viewpoint_x, camera_viewpoint_y = calculate_viewpoints(camera_rotation, camera_position)
+    if classification == "static":
+        # determine camera viewpoint
+        camera_viewpoint_x, camera_viewpoint_y = calculate_viewpoints(camera_rotation, camera_position, None)
 
-    print("camera x: ", camera_position[0], " camera y: ", camera_position[1])
-    print("limit x: ", limit_x, " limit_y: ", limit_y)
-    print("rotation: ", camera_rotation)
-    print("viewpoint: (", camera_viewpoint_x, ", ", camera_viewpoint_y, ")")
+        print("camera x: ", camera_position[0], " camera y: ", camera_position[1])
+        print("limit x: ", limit_x, " limit_y: ", limit_y)
+        print("rotation: ", camera_rotation)
+        print("viewpoint: (", camera_viewpoint_x, ", ", camera_viewpoint_y, ")")
 
-    # calculate rotation of first and last ray
-    start = camera_rotation + (camera_angle / 2)
-    stop = camera_rotation - (camera_angle / 2)
+        # calculate rotation of first and last ray
+        start = camera_rotation + (camera_angle / 2)
+        stop = camera_rotation - (camera_angle / 2)
 
-    print("start: ", start)
-    print("stop: ", stop)
+        print("start: ", start)
+        print("stop: ", stop)
 
-    # refine search angle by using camera data
-    start_correction, stop_correction = refine_camera_angle(object_image_x, object_image_width)
+        # refine search angle by using camera data
+        start_correction, stop_correction = refine_camera_angle(object_image_x, object_image_width)
 
-    print("correction start: ", start_correction)
-    print("correction stop: ", stop_correction)
+        print("correction start: ", start_correction)
+        print("correction stop: ", stop_correction)
 
-    # TODO: uncomment to allow angle refining
-    start = start - start_correction
-    stop = stop + stop_correction
+        # TODO: uncomment to allow angle refining
+        start = start - start_correction
+        stop = stop + stop_correction
 
-    if start > 360:
-        start = start - 360
+        if start > 360:
+            start = start - 360
 
-    if stop < 0:
-        stop = 360 + stop
+        if stop < 0:
+            stop = 360 + stop
 
-    print("start: ", start)
-    print("stop: ", stop)
+        print("start: ", start)
+        print("stop: ", stop)
 
-    # if classification == "static":
+        # determine first ray
+        ray_endpoint_start_x, ray_endpoint_start_y = calculate_viewpoints(start, camera_position, None)
+        print("ray start: (", ray_endpoint_start_x, ", ", ray_endpoint_start_y, ")")
 
-    # determine first ray
-    ray_endpoint_start_x, ray_endpoint_start_y = calculate_viewpoints(start, camera_position)
-    print("ray start: (", ray_endpoint_start_x, ", ", ray_endpoint_start_y, ")")
+        # determine last ray
+        ray_endpoint_stop_x, ray_endpoint_stop_y = calculate_viewpoints(stop, camera_position, None)
+        print("ray stop: (", ray_endpoint_stop_x, ", ", ray_endpoint_stop_y, ")")
+        print(" ")
 
-    # determine last ray
-    ray_endpoint_stop_x, ray_endpoint_stop_y = calculate_viewpoints(stop, camera_position)
-    print("ray stop: (", ray_endpoint_stop_x, ", ", ray_endpoint_stop_y, ")")
-    print(" ")
+        # determine side of map where rays start and stop
+        if ray_endpoint_start_x == 0:
+            start_left = True
+        elif ray_endpoint_start_y == 0:
+            start_up = True
+        elif ray_endpoint_start_x == map_resolution[0] - 1:
+            start_right = True
+        elif ray_endpoint_start_y == map_resolution[1] - 1:
+            start_down = True
 
-    # determine sides of map where rays start
-    if ray_endpoint_start_x == 0:
-        start_left = True
-    elif ray_endpoint_start_y == 0:
-        start_up = True
-    elif ray_endpoint_start_x == map_resolution[0] - 1:
-        start_right = True
-    elif ray_endpoint_start_y == map_resolution[1] - 1:
-        start_down = True
+        if ray_endpoint_stop_x == 0:
+            stop_left = True
+        elif ray_endpoint_stop_y == 0:
+            stop_up = True
+        elif ray_endpoint_stop_x == map_resolution[0] - 1:
+            stop_right = True
+        elif ray_endpoint_stop_y == map_resolution[1] - 1:
+            stop_down = True
 
-    if ray_endpoint_stop_x == 0:
-        stop_left = True
-    elif ray_endpoint_stop_y == 0:
-        stop_up = True
-    elif ray_endpoint_stop_x == map_resolution[0] - 1:
-        stop_right = True
-    elif ray_endpoint_stop_y == map_resolution[1] - 1:
-        stop_down = True
+        # shoot rays
+        object_points = shoot_rays(camera_position, pixels, start_right, stop_right, start_up, stop_up, start_left,
+                                   stop_left, start_down, stop_down, object_points,
+                                   ray_endpoint_start_x, ray_endpoint_start_y, ray_endpoint_stop_x, ray_endpoint_stop_y)
 
-    # shoot rays
-    object_points = shoot_rays(camera_position, pixels, start_right, stop_right, start_up, stop_up, start_left,
-                               stop_left, start_down, stop_down, object_points,
-                               ray_endpoint_start_x, ray_endpoint_start_y, ray_endpoint_stop_x, ray_endpoint_stop_y)
+        # print(object_points)
 
-    # print(object_points)
+        # print(object_points)
+        # print(classification)
 
-    # print(object_points)
-    # print(classification)
+        # change color of object pixels that were hit
+        classify_object(object_points, classification, pixels)
 
-    # change color of object pixels that were hit
-    classify_object(object_points, classification, pixels)
+        # TODO: fix expansion
+        # look if there are other pixels that belong to the object
+        # for i in range(0, 10):
+        # object_points = expand_classification(object_points, classification, pixels)
 
-    # TODO: fix expansion
-    # look if there are other pixels that belong to the object
-    # for i in range(0, 10):
-    # object_points = expand_classification(object_points, classification, pixels)
+        # visualise camera viewpoint
+        # points = get_ray((camera_position[0], camera_position[1]), (camera_viewpoint_x, camera_viewpoint_y))
+        # for coordinate in points:
+        # pixels[coordinate[0], coordinate[1]] = (0, 255, 0)
 
-    # visualise camera viewpoint
-    # points = get_ray((camera_position[0], camera_position[1]), (camera_viewpoint_x, camera_viewpoint_y))
-    # for coordinate in points:
-    # pixels[coordinate[0], coordinate[1]] = (0, 255, 0)
+        # visualise start and end of rays
+        # points_1 = get_ray((camera_position[0], camera_position[1]),
+        # (round(ray_endpoint_start_x), round(ray_endpoint_start_y)))
+        # points_2 = get_ray((camera_position[0], camera_position[1]),
+        # (round(ray_endpoint_stop_x), round(ray_endpoint_stop_y)))
 
-    # visualise start and end of rays
-    # points_1 = get_ray((camera_position[0], camera_position[1]),
-    # (round(ray_endpoint_start_x), round(ray_endpoint_start_y)))
-    # points_2 = get_ray((camera_position[0], camera_position[1]),
-    # (round(ray_endpoint_stop_x), round(ray_endpoint_stop_y)))
+        # visualize_ray(points_1, (255, 0, 0), pixels)
+        # visualize_ray(points_2, (255, 0, 0), pixels)
 
-    # visualize_ray(points_1, (255, 0, 0), pixels)
-    # visualize_ray(points_2, (255, 0, 0), pixels)
-    # elif classification == "dynamic":
-    # TODO: implement method to draw dynamic objects
+    elif classification == "dynamic":
+        distance = (object_image_z / 1000) / resolution
+
+        # determine camera viewpoint
+        # camera_viewpoint_x, camera_viewpoint_y = calculate_viewpoints(camera_rotation, camera_position, distance)
+
+        # calculate rotation of first and last ray
+        start = camera_rotation + (camera_angle / 2)
+        stop = camera_rotation - (camera_angle / 2)
+
+        # refine search angle by using camera data
+        start_correction, stop_correction = refine_camera_angle(object_image_x, object_image_width)
+
+        if start > 360:
+            start = start - 360
+
+        if stop < 0:
+            stop = 360 + stop
+
+        start = start - start_correction
+        stop = stop + stop_correction
+
+        # determine first ray
+        # TODO: fix distance
+        ray_endpoint_start_x, ray_endpoint_start_y = calculate_viewpoints(start, camera_position, distance)
+
+        # determine last ray
+        ray_endpoint_stop_x, ray_endpoint_stop_y = calculate_viewpoints(stop, camera_position, distance)
+
+        # calculate endpoint distance
+        endpoint_distance = np.sqrt(np.power((ray_endpoint_start_x - ray_endpoint_stop_x), 2) + np.power(
+            (ray_endpoint_start_y - ray_endpoint_stop_y), 2))
+
+        ray_endpoint_start_x_2, ray_endpoint_start_y_2 = calculate_viewpoints(camera_rotation, (ray_endpoint_start_x,
+                                                                                                ray_endpoint_start_y),
+                                                                              endpoint_distance)
+
+        ray_endpoint_stop_x_2, ray_endpoint_stop_y_2 = calculate_viewpoints(camera_rotation, (ray_endpoint_stop_x,
+                                                                                              ray_endpoint_stop_y),
+                                                                            endpoint_distance)
+
+        # shoot rays
+        shoot_rays_2(ray_endpoint_start_x, ray_endpoint_start_y, ray_endpoint_stop_x, ray_endpoint_stop_y,
+                     ray_endpoint_start_x_2, ray_endpoint_start_y_2, ray_endpoint_stop_x_2, ray_endpoint_stop_y_2,
+                     pixels)
 
     data.save('data/map/layer 2/mapLayer2.png')
 
@@ -646,6 +691,28 @@ def shoot_rays(camera_position, pixels, start_right, stop_right, start_up, stop_
         return object_points
 
 
+def shoot_rays_2(ray_endpoint_start_x, ray_endpoint_start_y, ray_endpoint_stop_x, ray_endpoint_stop_y,
+                 ray_endpoint_start_x_2, ray_endpoint_start_y_2, ray_endpoint_stop_x_2, ray_endpoint_stop_y_2, pixels):
+    points = get_ray((ray_endpoint_start_x, ray_endpoint_start_y), (ray_endpoint_stop_x, ray_endpoint_stop_y))
+    points2 = get_ray((ray_endpoint_start_x, ray_endpoint_start_y), (ray_endpoint_start_x_2, ray_endpoint_start_y_2))
+    points3 = get_ray((ray_endpoint_start_x_2, ray_endpoint_start_y_2), (ray_endpoint_stop_x_2, ray_endpoint_stop_y_2))
+    points4 = get_ray((ray_endpoint_stop_x_2, ray_endpoint_stop_y_2), (ray_endpoint_stop_x, ray_endpoint_stop_y))
+    for (i, j, k, l) in zip(points, points2, points3, points4):
+        # print("x: ", i[0], " y: ", i[1])
+        square_points_1 = get_ray(k, i)
+        square_points_2 = get_ray(j, l)
+        square_points_3 = get_ray(i, j)
+        square_points_4 = get_ray(k, l)
+        visualize_ray_2(i, (0, 255, 0), pixels)
+        visualize_ray_2(j, (0, 255, 0), pixels)
+        visualize_ray_2(k, (0, 255, 0), pixels)
+        visualize_ray_2(l, (0, 255, 0), pixels)
+        visualize_ray(square_points_1, (0, 255, 0), pixels)
+        visualize_ray(square_points_2, (0, 255, 0), pixels)
+        visualize_ray(square_points_3, (0, 255, 0), pixels)
+        visualize_ray(square_points_4, (0, 255, 0), pixels)
+
+
 def classify_object(coordinates, object_type, pixels):
     print("classify")
     if object_type == "static":
@@ -714,57 +781,75 @@ def visualize_ray_2(coordinate, color, pixels):
     pixels[coordinate[0], coordinate[1]] = color
 
 
-def calculate_viewpoints(rotation, camera_position):
+def calculate_viewpoints(rotation, camera_position, distance):
     global map_resolution
     viewpoint_x, viewpoint_y = 0, 0
 
-    if 0 <= rotation <= 90:
-        limit_x = map_resolution[0] - camera_position[0]
-        limit_y = camera_position[1]
-        temp = limit_y - ((rotation / 360) * (limit_x * 4 + limit_y * 4))
-        if temp >= 0:
-            viewpoint_y = round(temp)
-            viewpoint_x = map_resolution[0] - 1
-        else:
-            viewpoint_y = 0
-            viewpoint_x = round(map_resolution[0] - abs(temp))
-            if viewpoint_x < 0:
-                viewpoint_x = 0
+    if distance is None:
+        if 0 <= rotation <= 90:
+            limit_x = map_resolution[0] - camera_position[0]
+            limit_y = camera_position[1]
+            temp = limit_y - ((rotation / 360) * (limit_x * 4 + limit_y * 4))
+            if temp >= 0:
+                viewpoint_y = round(temp)
+                viewpoint_x = map_resolution[0] - 1
+            else:
+                viewpoint_y = 0
+                viewpoint_x = round(map_resolution[0] - abs(temp))
+                if viewpoint_x < 0:
+                    viewpoint_x = 0
 
-    elif 90 < rotation <= 180:
-        limit_x = camera_position[0]
-        limit_y = camera_position[1]
-        temp = limit_x - (((rotation - 90) / 360) * (limit_x * 4 + limit_y * 4))
-        if temp >= 0:
-            viewpoint_x = round(temp)
-            viewpoint_y = 0
-        else:
-            viewpoint_x = 0
-            viewpoint_y = round(abs(temp))
-    elif 180 < rotation <= 270:
-        limit_x = camera_position[0]
-        limit_y = map_resolution[1] - camera_position[1]
-        temp = camera_position[1] + (((rotation - 180) / 360) * (limit_x * 4 + limit_y * 4))
-        if temp <= map_resolution[1]:
-            viewpoint_y = round(temp)
-            viewpoint_x = 0
-            if viewpoint_y > map_resolution[1] - 1:
+        elif 90 < rotation <= 180:
+            limit_x = camera_position[0]
+            limit_y = camera_position[1]
+            temp = limit_x - (((rotation - 90) / 360) * (limit_x * 4 + limit_y * 4))
+            if temp >= 0:
+                viewpoint_x = round(temp)
+                viewpoint_y = 0
+            else:
+                viewpoint_x = 0
+                viewpoint_y = round(abs(temp))
+        elif 180 < rotation <= 270:
+            limit_x = camera_position[0]
+            limit_y = map_resolution[1] - camera_position[1]
+            temp = camera_position[1] + (((rotation - 180) / 360) * (limit_x * 4 + limit_y * 4))
+            if temp <= map_resolution[1]:
+                viewpoint_y = round(temp)
+                viewpoint_x = 0
+                if viewpoint_y > map_resolution[1] - 1:
+                    viewpoint_y = map_resolution[1] - 1
+            else:
                 viewpoint_y = map_resolution[1] - 1
-        else:
-            viewpoint_y = map_resolution[1] - 1
-            viewpoint_x = round(temp - map_resolution[1])
-    elif 270 < rotation <= 360:
-        limit_x = map_resolution[0] - camera_position[0]
-        limit_y = map_resolution[1] - camera_position[1]
-        temp = camera_position[0] + (((rotation - 270) / 360) * (limit_x * 4 + limit_y * 4))
-        if temp <= map_resolution[0] - 1:
-            viewpoint_x = round(temp)
-            viewpoint_y = map_resolution[1] - 1
-        else:
-            viewpoint_x = map_resolution[0] - 1
-            viewpoint_y = round(map_resolution[1] - (temp - map_resolution[0]))
-            if viewpoint_y > map_resolution[1] - 1:
+                viewpoint_x = round(temp - map_resolution[1])
+        elif 270 < rotation <= 360:
+            limit_x = map_resolution[0] - camera_position[0]
+            limit_y = map_resolution[1] - camera_position[1]
+            temp = camera_position[0] + (((rotation - 270) / 360) * (limit_x * 4 + limit_y * 4))
+            if temp <= map_resolution[0] - 1:
+                viewpoint_x = round(temp)
                 viewpoint_y = map_resolution[1] - 1
+            else:
+                viewpoint_x = map_resolution[0] - 1
+                viewpoint_y = round(map_resolution[1] - (temp - map_resolution[0]))
+                if viewpoint_y > map_resolution[1] - 1:
+                    viewpoint_y = map_resolution[1] - 1
+
+    else:
+        if 0 <= rotation <= 90:
+            viewpoint_x = (np.cos(np.deg2rad(rotation)) * distance) + camera_position[0]
+            viewpoint_y = camera_position[1] - (np.sin(np.deg2rad(rotation)) * distance)
+
+        elif 90 < rotation <= 180:
+            viewpoint_x = camera_position[0] - (np.cos(np.deg2rad(180 - rotation)) * distance)
+            viewpoint_y = camera_position[1] - (np.sin(np.deg2rad(180 - rotation)) * distance)
+
+        elif 180 < rotation <= 270:
+            viewpoint_x = camera_position[0] - (np.cos(np.deg2rad(rotation - 180)) * distance)
+            viewpoint_y = camera_position[1] + (np.sin(np.deg2rad(rotation - 180)) * distance)
+
+        elif 270 < rotation <= 360:
+            viewpoint_x = camera_position[0] + (np.cos(np.deg2rad(360 - rotation)) * distance)
+            viewpoint_y = camera_position[1] + (np.sin(np.deg2rad(360 - rotation)) * distance)
 
     return viewpoint_x, viewpoint_y
 
@@ -835,6 +920,7 @@ def get_data():
     files = os.listdir('matched data')
     classification = []
     object_image_x = []
+    object_image_z = []
     object_image_width = []
     camera_relative_position = []
     camera_orientation = []
@@ -848,13 +934,14 @@ def get_data():
             data = json.load(json_file)
             classification.append(data['camera'][0]['classification'])
             object_image_x.append(data['camera'][0]['object_image_x'])
+            object_image_z.append(data['camera'][0]['object_image_z'])
             object_image_width.append(data['camera'][0]['object_image_width'])
             camera_relative_position.append(data['position'][0]['position'])
             camera_orientation.append(data['position'][0]['orientation'])
             # TODO: uncomment
         os.remove('matched data/' + i)
 
-    return classification, object_image_x, object_image_width, camera_relative_position, camera_orientation
+    return classification, object_image_x, object_image_z, object_image_width, camera_relative_position, camera_orientation
 
 
 def get_map(counter, previous_map):
@@ -930,10 +1017,11 @@ def main():
 
         map_rotation = calculate_map_rotation(opencv_im)
 
-        classification, object_image_x, object_image_width, camera_relative_position, camera_orientation = get_data()
+        classification, object_image_x, object_image_z, object_image_width, camera_relative_position, camera_orientation \
+            = get_data()
 
         for i in range(len(classification)):
-            trace_objects(data, pixels, classification[i], object_image_x[i], object_image_width[i],
+            trace_objects(data, pixels, classification[i], object_image_x[i], object_image_z[i], object_image_width[i],
                           camera_relative_position[i], camera_orientation[i], map_rotation)
             classification_counter += 1
             data, pixels, opencv_im, previous_map = get_map(classification_counter, previous_map)

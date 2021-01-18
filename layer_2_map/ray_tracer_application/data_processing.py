@@ -55,14 +55,14 @@ def main():
             print("waiting for camera data.")
 
         # check availability of positional data
-        while len(os.listdir('data/positional data')) == 0:
+        while len(os.listdir('data/positional data')) == 1:
             print("waiting for positional data.")
 
         # iterate through data and search for matches (timestamp + nodeID)
         for i in range(len(os.listdir('data/camera data'))):
             # TODO: change to work with multiple objects in one picture
             # read camera data
-            with open('data/camera data/camera_data_{}.json'.format(i - 1)) as json_file:
+            with open('data/camera data/camera_data_{}.json'.format(i)) as json_file:
                 data = json.load(json_file)
 
                 for k in data:
@@ -77,7 +77,7 @@ def main():
 
             for j in range(len(os.listdir('data/ positional data'))):
                 # read positional data
-                with open('data/positional data/positional_data_{}.json'.format(j - 1)) as json_file:
+                with open('data/positional data/positional_data_{}.json'.format(j)) as json_file:
                     data = json.load(json_file)
                     for k in data:
                         positional_data_ID = k['id_robot']

@@ -7,5 +7,5 @@ If you are not running this app local you can change your ROS_MASTER_URI by chan
 
     rosinit("IP of turtlebot")
     
-######sidenote
+##### sidenote
 The switch is there to prevent errors of unfound topics. Turn the switch off when not connected to a turtlebot to only visualise the ray tracing progress

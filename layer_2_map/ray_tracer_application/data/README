@@ -1,7 +1,0 @@
-This folder contains all data needed to build up the layer 2 map.
-
-camera data: Files that contain processed image data from a specific node. These files are sent out by the Object/People tracking team.
-
-map: Contains two sub directories. "layer 1" contains the received layer 1 map, sent out by the Turtlebot team. "layer 2" contains the layer 2 map that is built by the "raytracer.py" code. 
-
-positional data: Contains files with odometry data from the robots, sent out by the Turtlebot team. It also contains a file with the location and ID of the static nodes. The latter file needs to be hardcoded. 

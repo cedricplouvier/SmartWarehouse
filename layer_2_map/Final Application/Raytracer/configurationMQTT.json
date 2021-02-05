@@ -1,0 +1,52 @@
+{
+  "_templates": {
+    "mqtt": {
+      "addons": [],
+      "transport": {
+        "type": "mqtt",
+        "host": "broker.mqttdashboard.com",
+        "port": 1883
+      }
+    }
+  },
+  "publish-block": {
+    "links": {
+      "channels": {
+        "pub-map-layer-2": {
+          "_template": "mqtt",
+          "transport": {
+            "topic": "I-AI-IoT/map-layer-2",
+            "publish": true
+          }
+        }
+      }
+    }
+  },
+  "subscribe-block": {
+    "links": {
+      "channels": {
+        "subscribe-object-people-tracking-channel": {
+          "_template": "mqtt",
+          "transport": {
+            "topic": "detected-objects",
+            "publish": false
+          }
+        },
+        "subscribe-mqtt-positional-data": {
+          "_template": "mqtt",
+          "transport": {
+            "topic": "robot-reply",
+            "publish": false
+          }
+        },
+        "sub-map-layer-2": {
+          "_template": "mqtt",
+          "transport": {
+            "topic": "I-AI-IoT/map-layer-2",
+            "publish": false
+          }
+        }
+      }
+    }
+  }
+}

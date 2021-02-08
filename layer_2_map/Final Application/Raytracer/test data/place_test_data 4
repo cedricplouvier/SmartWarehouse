@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+cp matched_data_*.json ../matched\ data/
+

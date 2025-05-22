@@ -8,3 +8,4 @@ To navigate the robot through the warehouse a mapping of the floorplan is genera
 Wihle navigating the LIDAR sensor is used to detect dynmic objects on it's path and re-route if necessary. Taking into account the dynamic object moving direction and speed.
 A digital twin is created based on the warehouse floorplan generate with SLAM to make the robot navigate autonomously.
 
+<img width="701" alt="Screenshot 2025-05-22 at 15 54 04" src="https://github.com/user-attachments/assets/6cbfe9ac-d9c8-41e6-8d8b-b6b37e619f1e" />
